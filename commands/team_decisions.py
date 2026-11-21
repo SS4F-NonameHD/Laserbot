@@ -66,14 +66,14 @@ class DecisionMainView(discord.ui.View):
 
     def get_poll_info(self, embed):
         if not embed.footer or not embed.footer.text:
-            return None, "aufnahme", None
+            return None, "admission", None
         text = embed.footer.text
 
         id_match = re.search(r'ID:\s*([a-zA-Z0-9]+)', text)
         poll_id = id_match.group(1) if id_match else None
 
         type_match = re.search(r'(?:Type|Typ|Tipo):\s*([a-zA-Z_]+)', text)
-        poll_type = type_match.group(1).lower() if type_match else ("votekick" if "kick" in (embed.title or "").lower() else "aufnahme")
+        poll_type = type_match.group(1).lower() if type_match else ("votekick" if "kick" in (embed.title or "").lower() else "admission")
 
         date_match = re.search(r'(\d{1,2}\.\d{1,2}\.\d{4})\s+(\d{1,2}:\d{2})', text)
         deadline = None
@@ -212,7 +212,6 @@ class DecisionMainView(discord.ui.View):
         await interaction.response.send_message(embed=res_embed)
 
 def build_decision_poll_embed(guild_id, poll_type: str, person_name: str, deadline_hours: int = None):
-    """Wird sowohl von /aufnahme & /votekick als auch vom Rechtsklick-Kontextmenü genutzt."""
     settings = data_manager.get_server_settings(guild_id)
     lang = settings["language"]
     hours = deadline_hours if deadline_hours is not None else int(settings.get("decision_default_hours", 48))
@@ -248,10 +247,10 @@ class TeamDecisions(commands.Cog):
     async def cog_load(self):
         self.bot.add_view(DecisionMainView())
 
-    @app_commands.command(name="aufnahme", description="Starts an anonymous team admission vote")
-    @app_commands.describe(name="Applicant's name", deadline_stunden="Optional: Hours until poll closes")
+    @app_commands.command(name="admission", description="Starts an anonymous team admission vote")
+    @app_commands.describe(name="Applicant's name", deadline_hours="Optional: Hours until poll closes (default: server setting)")
     @app_commands.check(is_authorized_decisions)
-    async def aufnahme(self, interaction: discord.Interaction, name: str, deadline_stunden: int = None):
+    async def admission(self, interaction: discord.Interaction, name: str, deadline_hours: int = None):
         if not interaction.guild_id:
             await interaction.response.send_message(i18n.t("en", "server_only"), ephemeral=True)
             return
@@ -259,13 +258,13 @@ class TeamDecisions(commands.Cog):
         if not settings.get("team_role_id"):
             await interaction.response.send_message(i18n.t(interaction, "team_role_missing_cfg"), ephemeral=True)
             return
-        embed, view = build_decision_poll_embed(interaction.guild_id, "aufnahme", name, deadline_stunden)
+        embed, view = build_decision_poll_embed(interaction.guild_id, "admission", name, deadline_hours)
         await interaction.response.send_message(embed=embed, view=view)
 
     @app_commands.command(name="votekick", description="Starts an anonymous team exclusion vote")
-    @app_commands.describe(name="Member's name", deadline_stunden="Optional: Hours until poll closes")
+    @app_commands.describe(name="Member's name", deadline_hours="Optional: Hours until poll closes (default: server setting)")
     @app_commands.check(is_authorized_decisions)
-    async def votekick(self, interaction: discord.Interaction, name: str, deadline_stunden: int = None):
+    async def votekick(self, interaction: discord.Interaction, name: str, deadline_hours: int = None):
         if not interaction.guild_id:
             await interaction.response.send_message(i18n.t("en", "server_only"), ephemeral=True)
             return
@@ -273,10 +272,10 @@ class TeamDecisions(commands.Cog):
         if not settings.get("team_role_id"):
             await interaction.response.send_message(i18n.t(interaction, "team_role_missing_cfg"), ephemeral=True)
             return
-        embed, view = build_decision_poll_embed(interaction.guild_id, "votekick", name, deadline_stunden)
+        embed, view = build_decision_poll_embed(interaction.guild_id, "votekick", name, deadline_hours)
         await interaction.response.send_message(embed=embed, view=view)
 
-    @aufnahme.error
+    @admission.error
     @votekick.error
     async def error_handler(self, interaction: discord.Interaction, error):
         if isinstance(error, app_commands.CheckFailure):
