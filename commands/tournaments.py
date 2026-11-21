@@ -1205,9 +1205,10 @@ class Tournaments(commands.Cog):
         await i.response.send_message(embed=embed, view=TournamentMainMenu(events, can_create, can_manage, default_dl), ephemeral=True)
 
     @app_commands.command(name="tournament_manual", description="[Developer] Creates a tournament in the current or specified channel")
+    @app_commands.describe(title="Tournament title", description="Description", location="Location / City", deadline_hours="Deadline hours before start", channel_name="Optional channel name")
     @app_commands.check(is_developer)
-    async def tournament_manual(self, i: discord.Interaction, title: str, description: str, ort: str, deadline_stunden: int, channel_name: str = None):
-        meta = {"channel_name": channel_name, "title": title, "description": description, "ort": ort, "deadline_stunden": deadline_stunden}
+    async def tournament_manual(self, i: discord.Interaction, title: str, description: str, location: str, deadline_hours: int, channel_name: str = None):
+        meta = {"channel_name": channel_name, "title": title, "description": description, "ort": location, "deadline_stunden": deadline_hours}
         await i.response.send_message(f"⚙️ **Manual Tournament: {title}**\nSelect schedule type:", view=TournamentTypeView(meta), ephemeral=True)
 
     @app_commands.command(name="tournament_update_old", description="[Developer] Refreshes all tournament messages on this server")
