@@ -18,7 +18,7 @@ Laserbot processes data exclusively to provide team and tournament management fe
 - **Moderation Records:** Server-level or global bot restrictions (User ID, expiration, reason) stored to prevent abuse.
 
 ## 3. Anonymous Elections & Secret Ballots
-Captain elections (`/captainwahl`), team decisions (`/aufnahme`, `/votekick`), and anonymous polls (`/vote`) hash voter IDs irreversibly using **SHA-256** combined with a secret cryptographic salt. Individual secret votes cannot be reconstructed.
+Captain elections (`/captain_election`), team decisions (`/admission`, `/votekick`), and anonymous polls (`/vote`) hash voter IDs irreversibly using **SHA-256** combined with a secret cryptographic salt. Individual secret votes cannot be reconstructed.
 
 ## 4. Self-Service GDPR Rights (Art. 15 & Art. 17 GDPR)
 You have full self-service control over your data directly inside Discord (on any server or via Direct Message to Laserbot using `/privacy` or `/profile`):
