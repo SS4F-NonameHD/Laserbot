@@ -1,10 +1,16 @@
+import sys
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
 import discord
 from discord.ext import commands
-import os
 from dotenv import load_dotenv
 from command_translator import LaserbotCommandTranslator
 
-load_dotenv()
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 BOT_NAME = os.getenv('BOT_NAME', 'Laserbot')
 
@@ -17,12 +23,12 @@ class Laserbot(commands.Bot):
         )
 
     async def setup_hook(self):
-        # Aktiviert die mehrsprachige Übersetzung aller Slash- & Kontext-Befehle (EN, DE, CS, IT)
         await self.tree.set_translator(LaserbotCommandTranslator())
 
-        if os.path.exists('./commands'):
-            for filename in sorted(os.listdir('./commands')):
-                if filename.endswith('.py'):
+        commands_dir = os.path.join(BASE_DIR, 'commands')
+        if os.path.exists(commands_dir):
+            for filename in sorted(os.listdir(commands_dir)):
+                if filename.endswith('.py') and not filename.startswith('_'):
                     await self.load_extension(f'commands.{filename[:-3]}')
                     print(f'Loaded extension: {filename}')
 
