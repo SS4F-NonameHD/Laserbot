@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import os
 from dotenv import load_dotenv
+from command_translator import LaserbotCommandTranslator
 
 load_dotenv()
 
@@ -16,6 +17,9 @@ class Laserbot(commands.Bot):
         )
 
     async def setup_hook(self):
+        # Aktiviert die mehrsprachige Übersetzung aller Slash- & Kontext-Befehle (EN, DE, CS, IT)
+        await self.tree.set_translator(LaserbotCommandTranslator())
+
         if os.path.exists('./commands'):
             for filename in sorted(os.listdir('./commands')):
                 if filename.endswith('.py'):
@@ -23,7 +27,7 @@ class Laserbot(commands.Bot):
                     print(f'Loaded extension: {filename}')
 
         await self.tree.sync()
-        print("Slash commands synchronized.")
+        print("Slash commands & localizations synchronized.")
 
     async def on_ready(self):
         activity_name = os.getenv('BOT_ACTIVITY', 'Lasertag | /help')
