@@ -418,32 +418,32 @@ class Orgateam(commands.Cog):
         return choices
 
     @app_commands.command(name="orga_dashboard", description="Opens the hotel & carpool planning dashboard for a tournament")
-    @app_commands.describe(turnier_id="Select tournament")
-    @app_commands.autocomplete(turnier_id=tournament_autocomplete)
+    @app_commands.describe(tournament_id="Select tournament")
+    @app_commands.autocomplete(tournament_id=tournament_autocomplete)
     @app_commands.check(is_authorized_orgateam)
-    async def orga_dashboard(self, interaction: discord.Interaction, turnier_id: str):
+    async def orga_dashboard(self, interaction: discord.Interaction, tournament_id: str):
         if not interaction.guild_id:
             await interaction.response.send_message(i18n.t("en", "server_only"), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
-        evt = data_manager.get_tournament_event_by_custom_id(interaction.guild_id, turnier_id)
+        evt = data_manager.get_tournament_event_by_custom_id(interaction.guild_id, tournament_id)
         if not evt:
             await interaction.followup.send("❌ Tournament not found on this server.", ephemeral=True)
             return
 
         event_title = evt[4]
-        emb = generate_dashboard_embed(interaction.guild_id, turnier_id, event_title, "")
-        await interaction.followup.send(embed=emb, view=DashboardView(interaction.guild_id, turnier_id, event_title, ""), ephemeral=True)
+        emb = generate_dashboard_embed(interaction.guild_id, tournament_id, event_title, "")
+        await interaction.followup.send(embed=emb, view=DashboardView(interaction.guild_id, tournament_id, event_title, ""), ephemeral=True)
 
     @app_commands.command(name="hotel_add", description="Adds a hotel to this server's hotel catalog")
-    @app_commands.describe(ort="City (e.g. Prague, Munich)", name="Hotel name", link="Booking URL")
+    @app_commands.describe(city="City (e.g. Prague, Munich)", name="Hotel name", link="Booking URL")
     @app_commands.check(is_authorized_orgateam)
-    async def hotel_add(self, interaction: discord.Interaction, ort: str, name: str, link: str):
+    async def hotel_add(self, interaction: discord.Interaction, city: str, name: str, link: str):
         if not interaction.guild_id:
             await interaction.response.send_message(i18n.t("en", "server_only"), ephemeral=True)
             return
-        if data_manager.add_hotel(interaction.guild_id, ort, name, link):
-            await interaction.response.send_message(f"✅ Hotel **{name}** ({ort.capitalize()}) added to server catalog.", ephemeral=True)
+        if data_manager.add_hotel(interaction.guild_id, city, name, link):
+            await interaction.response.send_message(f"✅ Hotel **{name}** ({city.capitalize()}) added to server catalog.", ephemeral=True)
         else:
             await interaction.response.send_message(i18n.t(interaction, "db_error"), ephemeral=True)
 
