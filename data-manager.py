@@ -319,6 +319,15 @@ def init_db():
             )
         """)
 
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS guild_maintenance_log (
+                guild_id VARCHAR(50),
+                action_name VARCHAR(50),
+                last_run DATETIME,
+                PRIMARY KEY (guild_id, action_name)
+            )
+        """)
+
         conn.commit()
         c.close()
         conn.close()
@@ -1375,8 +1384,8 @@ def get_global_blacklist_status(user_id):
 # DSGVO / GDPR SELF-SERVICE (SERVERÜBERGREIFEND ART. 15 & ART. 17)
 # =====================================================================
 
-def check_and_record_dsgvo_export(user_id, cooldown_hours=24) -> tuple[bool, datetime | None]:
-    """Prüft das Rate-Limit für Self-Service-Exporte (Standard: 1x pro 24h)."""
+def check_and_record_dsgvo_export(user_id, cooldown_hours=72) -> tuple[bool, datetime | None]:
+    """Prüft das Rate-Limit für Self-Service-Exporte (Standard: 1x pro 72h)."""
     uid = str(user_id)
     try:
         conn = get_main_db_connection(); c = conn.cursor()
@@ -1389,6 +1398,25 @@ def check_and_record_dsgvo_export(user_id, cooldown_hours=24) -> tuple[bool, dat
                 c.close(); conn.close()
                 return False, next_allowed
         c.execute("REPLACE INTO dsgvo_export_log (user_id, last_export) VALUES (%s, %s)", (uid, now))
+        conn.commit(); c.close(); conn.close()
+        return True, None
+    except:
+        return True, None
+
+def check_and_record_guild_cooldown(guild_id, action_name: str, cooldown_hours=72) -> tuple[bool, datetime | None]:
+    """Prüft das 72h-Rate-Limit für rechenintensive Admin-Aktionen pro Server."""
+    gid = str(guild_id)
+    try:
+        conn = get_main_db_connection(); c = conn.cursor()
+        c.execute("SELECT last_run FROM guild_maintenance_log WHERE guild_id=%s AND action_name=%s", (gid, action_name))
+        r = c.fetchone()
+        now = datetime.now()
+        if r and r[0]:
+            next_allowed = r[0] + timedelta(hours=cooldown_hours)
+            if now < next_allowed:
+                c.close(); conn.close()
+                return False, next_allowed
+        c.execute("REPLACE INTO guild_maintenance_log (guild_id, action_name, last_run) VALUES (%s, %s, %s)", (gid, action_name, now))
         conn.commit(); c.close(); conn.close()
         return True, None
     except:
