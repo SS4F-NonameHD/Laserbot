@@ -511,9 +511,9 @@ class Statistics(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="statistik", description="Opens the server statistics dashboard (Trainings, Tournaments, Laserforce)")
+    @app_commands.command(name="statistics", description="Opens the server statistics dashboard (Trainings, Tournaments, Laserforce)")
     @app_commands.check(is_authorized_stats)
-    async def statistik(self, interaction: discord.Interaction):
+    async def statistics(self, interaction: discord.Interaction):
         if not interaction.guild_id:
             await interaction.response.send_message(i18n.t("en", "server_only"), ephemeral=True)
             return
