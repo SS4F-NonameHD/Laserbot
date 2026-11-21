@@ -110,34 +110,6 @@ class VotingModalView(discord.ui.View):
         else:
             await interaction.response.send_message(i18n.t(self.lang, "db_error"), ephemeral=True)
 
-class ElectionView(discord.ui.View):
-    def __init__(self, lang="en"):
-        super().__init__(timeout=None)
-        self.vote_btn.label = i18n.t(lang, "cap_btn_booth")
-        self.res_btn.label = i18n.t(lang, "cap_btn_results")
-
-    def get_election_info(self, embed):
-        if not embed.footer or not embed.footer.text:
-            return None, None
-        text = embed.footer.text
-        id_m = re.search(r'ID:\s*(\d+)', text)
-        dt_m = re.search(r'(\d{1,2}\.\d{1,2}\.\d{4})\s+(\d{1,2}:\d{2})', text)
-        e_id = id_m.group(1) if id_m else None
-        dl = datetime.strptime(f"{dt_m.group(1)} {dt_m.group(2)}", "%d.%m.%Y %H:%M") if dt_m else None
-        return e_id, dl
-
-    def get_candidates(self, embed):
-        if embed.fields:
-            return [x.strip() for x in embed.fields[0].value.split("\n") if x.strip()]
-        return []
-
-    @discord.ui.button(label="Voting Booth", style=discord.ButtonStyle.primary, emoji="🗳️", custom_id="enter_vote")
-    async def vote_button_cb(self, interaction: discord.Interaction, button: discord.ui.Button):
-        pass  # Replaced below to keep exact custom_id binding clean
-
-    def __init_subclass__(cls): pass
-
-# Saubere persistente View mit exakten custom_ids
 class PersistentElectionView(discord.ui.View):
     def __init__(self, lang="en"):
         super().__init__(timeout=None)
@@ -239,7 +211,6 @@ class PersistentElectionView(discord.ui.View):
                     stats[cand]["for"] += 1
                 elif vtype == 'AGAINST':
                     stats[cand]["score"] -= 1
-                    stats[cand]["against"] -= 0
                     stats[cand]["against"] += 1
 
         title = interaction.message.embeds[0].title
@@ -265,13 +236,13 @@ class CaptainElection(commands.Cog):
     async def cog_load(self):
         self.bot.add_view(PersistentElectionView())
 
-    @app_commands.command(name="captainwahl", description="Starts an anonymous Captain Election using server rules")
+    @app_commands.command(name="captain_election", description="Starts an anonymous Captain Election using server rules")
     @app_commands.describe(
-        titel="Title of the election",
-        deadline_stunden="Optional: Duration in hours (leave empty for server default)"
+        title="Title of the election",
+        deadline_hours="Optional: Duration in hours (leave empty for server default)"
     )
     @app_commands.check(is_authorized_captain)
-    async def captain_election(self, interaction: discord.Interaction, titel: str, deadline_stunden: int = None):
+    async def captain_election(self, interaction: discord.Interaction, title: str, deadline_hours: int = None):
         if not interaction.guild:
             await interaction.response.send_message(i18n.t("en", "server_only"), ephemeral=True)
             return
@@ -310,7 +281,7 @@ class CaptainElection(commands.Cog):
             await interaction.response.send_message(i18n.t(u_lang, "cap_not_enough", role=team_role.mention), ephemeral=True)
             return
 
-        hours = deadline_stunden if deadline_stunden is not None else int(settings.get("captain_default_hours", 48))
+        hours = deadline_hours if deadline_hours is not None else int(settings.get("captain_default_hours", 48))
         dl = datetime.now() + timedelta(hours=max(1, hours))
         e_id = generate_election_id()
 
@@ -322,7 +293,7 @@ class CaptainElection(commands.Cog):
             else i18n.t(g_lang, "cap_desc_no_against", max_for=max_for)
         )
 
-        embed = discord.Embed(title=titel, description=desc, color=discord.Color.dark_red())
+        embed = discord.Embed(title=title, description=desc, color=discord.Color.dark_red())
         embed.add_field(name=i18n.t(g_lang, "cap_candidates"), value="\n".join(c_list), inline=False)
         embed.set_footer(text=i18n.t(g_lang, "cap_footer", eid=e_id, dl=dl.strftime('%d.%m.%Y %H:%M')))
 
