@@ -801,16 +801,16 @@ class Training(commands.Cog):
         await self.bot.wait_until_ready()
 
     @app_commands.command(name="training", description="Opens the Training Management Dashboard")
-    @app_commands.describe(bild="Optional image to attach when creating or editing a training")
+    @app_commands.describe(image="Optional image to attach when creating or editing a training")
     @app_commands.check(is_authorized_training)
-    async def training(self, interaction: discord.Interaction, bild: discord.Attachment = None):
+    async def training(self, interaction: discord.Interaction, image: discord.Attachment = None):
         if not interaction.guild_id:
             await interaction.response.send_message(i18n.t("en", "server_only"), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
         u_lang = i18n.get_interaction_lang(interaction, prefer_guild=False)
 
-        image_url = bild.url if bild else None
+        image_url = image.url if image else None
         active_trainings = data_manager.get_active_trainings(interaction.guild_id)
 
         embed = discord.Embed(
