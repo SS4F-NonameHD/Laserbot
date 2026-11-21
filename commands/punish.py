@@ -23,11 +23,11 @@ class Moderation(commands.Cog):
     @app_commands.command(name="punish", description="Restricts a member from using the bot on this server")
     @app_commands.describe(
         member="Member to restrict",
-        dauer_in_stunden="Optional: Duration in hours (leave empty for permanent)",
-        grund="Reason for the restriction"
+        duration_hours="Optional: Duration in hours (leave empty for permanent)",
+        reason="Reason for the restriction"
     )
     @app_commands.check(is_authorized_punish)
-    async def punish(self, interaction: discord.Interaction, member: discord.Member, dauer_in_stunden: int = None, grund: str = "No reason provided"):
+    async def punish(self, interaction: discord.Interaction, member: discord.Member, duration_hours: int = None, reason: str = "No reason provided"):
         if not interaction.guild_id:
             await interaction.response.send_message(i18n.t("en", "server_only"), ephemeral=True)
             return
@@ -43,20 +43,20 @@ class Moderation(commands.Cog):
             return
 
         unban_time = None
-        if dauer_in_stunden and dauer_in_stunden > 0:
-            unban_time = datetime.now() + timedelta(hours=dauer_in_stunden)
+        if duration_hours and duration_hours > 0:
+            unban_time = datetime.now() + timedelta(hours=duration_hours)
             time_str = unban_time.strftime('%d.%m.%Y %H:%M')
         else:
             time_str = "Permanent"
 
-        if data_manager.blacklist_guild_user(interaction.guild_id, member.id, unban_time, grund):
+        if data_manager.blacklist_guild_user(interaction.guild_id, member.id, unban_time, reason):
             embed = discord.Embed(
                 title=i18n.t(g_lang, "punish_title"),
                 description=i18n.t(g_lang, "punish_desc", mention=member.mention, bot_name=data_manager.BOT_NAME),
                 color=discord.Color.red()
             )
             embed.add_field(name=i18n.t(g_lang, "punish_dur"), value=time_str, inline=True)
-            embed.add_field(name=i18n.t(g_lang, "punish_reason"), value=grund, inline=True)
+            embed.add_field(name=i18n.t(g_lang, "punish_reason"), value=reason, inline=True)
             embed.set_footer(text=i18n.t(g_lang, "punish_footer", admin=interaction.user.display_name))
             await interaction.response.send_message(embed=embed)
         else:
