@@ -50,13 +50,13 @@ class Reminder(commands.Cog):
         return choices[:25]
 
     @app_commands.command(name="reminder_create", description="Creates a personal DM reminder")
-    @app_commands.describe(text="What should I remind you about?", datum="Date (DD.MM.YYYY)", uhrzeit="Time (HH:MM)")
+    @app_commands.describe(text="What should I remind you about?", date="Date (DD.MM.YYYY)", time="Time (HH:MM)")
     @app_commands.allowed_installs(guilds=True, users=True)
     @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
-    async def reminder_create(self, interaction: discord.Interaction, text: str, datum: str, uhrzeit: str):
+    async def reminder_create(self, interaction: discord.Interaction, text: str, date: str, time: str):
         lang = i18n.get_interaction_lang(interaction, prefer_guild=False)
         try:
-            reminder_time = datetime.strptime(f"{datum.strip()} {uhrzeit.strip()}", "%d.%m.%Y %H:%M")
+            reminder_time = datetime.strptime(f"{date.strip()} {time.strip()}", "%d.%m.%Y %H:%M")
         except ValueError:
             await interaction.response.send_message(i18n.t(lang, "rem_err_fmt"), ephemeral=True)
             return
@@ -71,6 +71,7 @@ class Reminder(commands.Cog):
             await interaction.response.send_message(i18n.t(lang, "db_error"), ephemeral=True)
 
     @app_commands.command(name="reminder_delete", description="Deletes a scheduled personal reminder")
+    @app_commands.describe(reminder_id="Select the reminder to delete")
     @app_commands.autocomplete(reminder_id=reminder_autocomplete)
     @app_commands.allowed_installs(guilds=True, users=True)
     @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
@@ -91,10 +92,11 @@ class Reminder(commands.Cog):
         await interaction.response.send_message(i18n.t(lang, "rem_deleted"), ephemeral=True)
 
     @app_commands.command(name="reminder_edit", description="Edits an existing personal reminder")
+    @app_commands.describe(reminder_id="Select the reminder", new_text="Optional new text", new_date="Optional new date (DD.MM.YYYY)", new_time="Optional new time (HH:MM)")
     @app_commands.autocomplete(reminder_id=reminder_autocomplete)
     @app_commands.allowed_installs(guilds=True, users=True)
     @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
-    async def reminder_edit(self, interaction: discord.Interaction, reminder_id: str, neuer_text: str = None, neues_datum: str = None, neue_uhrzeit: str = None):
+    async def reminder_edit(self, interaction: discord.Interaction, reminder_id: str, new_text: str = None, new_date: str = None, new_time: str = None):
         lang = i18n.get_interaction_lang(interaction, prefer_guild=False)
         try:
             r_id = int(reminder_id)
@@ -108,13 +110,13 @@ class Reminder(commands.Cog):
             await interaction.response.send_message("❌ Reminder not found.", ephemeral=True)
             return
 
-        final_text = neuer_text if neuer_text else target[1]
+        final_text = new_text if new_text else target[1]
         current_dt = target[2]
         final_dt = current_dt
 
-        if neues_datum or neue_uhrzeit:
-            d_str = neues_datum.strip() if neues_datum else current_dt.strftime("%d.%m.%Y")
-            t_str = neue_uhrzeit.strip() if neue_uhrzeit else current_dt.strftime("%H:%M")
+        if new_date or new_time:
+            d_str = new_date.strip() if new_date else current_dt.strftime("%d.%m.%Y")
+            t_str = new_time.strip() if new_time else current_dt.strftime("%H:%M")
             try:
                 final_dt = datetime.strptime(f"{d_str} {t_str}", "%d.%m.%Y %H:%M")
             except ValueError:
