@@ -29,7 +29,7 @@ async def handle_self_gdpr_export(interaction: discord.Interaction):
     is_dev = interaction.user.id in data_manager.DEVELOPER_IDS
 
     if not is_dev:
-        allowed, next_time = data_manager.check_and_record_dsgvo_export(interaction.user.id, cooldown_hours=24)
+        allowed, next_time = data_manager.check_and_record_dsgvo_export(interaction.user.id, cooldown_hours=72)
         if not allowed and next_time:
             await interaction.response.send_message(
                 i18n.t(lang, "gdpr_cooldown", time=next_time.strftime("%d.%m.%Y %H:%M")),
@@ -45,7 +45,7 @@ async def handle_self_gdpr_export(interaction: discord.Interaction):
         filename=f"{data_manager.BOT_NAME}_GDPR_Data_{interaction.user.id}.txt"
     )
     await interaction.followup.send(i18n.t(lang, "gdpr_export_done"), file=file, ephemeral=True)
-
+    
 class EraseConfirmView(ui.View):
     def __init__(self, lang: str):
         super().__init__(timeout=60)
