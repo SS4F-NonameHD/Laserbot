@@ -21,8 +21,12 @@ async def check_tournament_hub_auth(interaction: discord.Interaction) -> bool:
     user_roles = [str(r.id) for r in interaction.user.roles]
     return bool((set(allowed_create) | set(allowed_manage)) & set(user_roles))
 
-def is_developer(interaction: discord.Interaction) -> bool:
-    return interaction.user.id in data_manager.DEVELOPER_IDS
+def is_admin_or_dev(interaction: discord.Interaction) -> bool:
+    if interaction.user.id in data_manager.DEVELOPER_IDS:
+        return True
+    if interaction.guild_id and isinstance(interaction.user, discord.Member):
+        return interaction.user.guild_permissions.administrator
+    return False
 
 def get_recent_tournaments(guild_id):
     try:
@@ -1204,38 +1208,79 @@ class Tournaments(commands.Cog):
         )
         await i.response.send_message(embed=embed, view=TournamentMainMenu(events, can_create, can_manage, default_dl), ephemeral=True)
 
-    @app_commands.command(name="tournament_manual", description="[Developer] Creates a tournament in the current or specified channel")
-    @app_commands.describe(title="Tournament title", description="Description", location="Location / City", deadline_hours="Deadline hours before start", channel_name="Optional channel name")
-    @app_commands.check(is_developer)
+    @app_commands.command(name="tournament_manual", description="Creates a tournament directly in the current or specified channel (Admin)")
+    @app_commands.describe(title="Tournament title", description="Description", location="Location / City", deadline_hours="Deadline hours before start", channel_name="Optional new channel name")
+    @app_commands.check(is_admin_or_dev)
     async def tournament_manual(self, i: discord.Interaction, title: str, description: str, location: str, deadline_hours: int, channel_name: str = None):
+        if not i.guild_id:
+            await i.response.send_message(i18n.t("en", "server_only"), ephemeral=True)
+            return
         meta = {"channel_name": channel_name, "title": title, "description": description, "ort": location, "deadline_stunden": deadline_hours}
         await i.response.send_message(f"⚙️ **Manual Tournament: {title}**\nSelect schedule type:", view=TournamentTypeView(meta), ephemeral=True)
 
-    @app_commands.command(name="tournament_update_old", description="[Developer] Refreshes all tournament messages on this server")
-    @app_commands.check(is_developer)
+    @app_commands.command(name="tournament_update_old", description="Refreshes tournament embeds & buttons (Dev: all servers | Server Admin: own server, 72h cooldown)")
+    @app_commands.check(is_admin_or_dev)
     async def tournament_update_old(self, i: discord.Interaction):
-        if not i.guild_id:
-            return
+        is_dev = i.user.id in data_manager.DEVELOPER_IDS
+
+        if not is_dev:
+            if not i.guild_id:
+                await i.response.send_message(i18n.t("en", "server_only"), ephemeral=True)
+                return
+            allowed, next_time = data_manager.check_and_record_guild_cooldown(i.guild_id, "tournament_update_old", cooldown_hours=72)
+            if not allowed and next_time:
+                await i.response.send_message(
+                    f"⏳ This maintenance command can only be run once every **72 hours** per server. Next available: **{next_time.strftime('%d.%m.%Y %H:%M')}**.",
+                    ephemeral=True
+                )
+                return
+
         await i.response.defer(ephemeral=True)
-        rows = get_recent_tournaments(i.guild_id)
-        g_lang = i18n.get_guild_lang(i.guild_id)
+
+        conn = data_manager.get_main_db_connection(); c = conn.cursor()
+        if is_dev:
+            # Developer: Aktualisiert ALLE Turniere auf ALLEN Servern (z.B. nach einem Bot-Update)
+            c.execute("SELECT guild_id, custom_id, event_title, channel_id, message_id FROM tournament_events")
+        else:
+            # Server-Admin: Aktualisiert ausschließlich die Turniere des eigenen Servers
+            c.execute("SELECT guild_id, custom_id, event_title, channel_id, message_id FROM tournament_events WHERE guild_id=%s", (str(i.guild_id),))
+        rows = c.fetchall()
+        c.close(); conn.close()
 
         count, errors = 0, 0
-        for _, title, ch_id, msg_id in rows:
+        touched_guilds = set()
+
+        for gid_str, _, title, ch_id, msg_id in rows:
             try:
-                ch = i.guild.get_channel(int(ch_id)) or await i.guild.fetch_channel(int(ch_id))
+                guild = self.bot.get_guild(int(gid_str))
+                if not guild:
+                    errors += 1
+                    continue
+                ch = guild.get_channel(int(ch_id)) or await guild.fetch_channel(int(ch_id))
                 msg = await ch.fetch_message(int(msg_id))
                 if msg.author.id != self.bot.user.id:
                     errors += 1
                     continue
-                view = TournamentView(g_lang)
-                await view.update_embed(msg)
+
+                g_lang = i18n.get_guild_lang(guild.id)
+                await TournamentView(g_lang).update_embed(msg)
+                touched_guilds.add(guild.id)
                 count += 1
                 await asyncio.sleep(2.5)
             except Exception as e:
-                print(f"Refresh error for {title}: {e}")
+                print(f"Refresh error for {title} (Guild {gid_str}): {e}")
                 errors += 1
-        await i.followup.send(f"✅ Updated `{count}` tournaments on **{i.guild.name}** (`{errors}` skipped).", ephemeral=True)
+
+        if is_dev:
+            await i.followup.send(
+                f"✅ **[Global Developer Update]** Refreshed `{count}` tournaments across `{len(touched_guilds)}` server(s) (`{errors}` skipped/unreachable).",
+                ephemeral=True
+            )
+        else:
+            await i.followup.send(
+                f"✅ Refreshed `{count}` tournaments on **{i.guild.name}** (`{errors}` skipped).",
+                ephemeral=True
+            )
 
     @tournament.error
     @tournament_manual.error
