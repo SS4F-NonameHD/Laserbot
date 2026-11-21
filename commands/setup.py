@@ -78,8 +78,6 @@ def build_config_embed(guild: discord.Guild) -> discord.Embed:
     )
     return embed
 
-# --- MODALS & SUB-VIEWS FÜR /setup_config ---
-
 class VotingRulesModal(ui.Modal, title="Voting & Election Rules"):
     cap_for = ui.TextInput(label="Captain: Max FOR votes (+1) [1-10]", required=True, max_length=2)
     cap_against = ui.TextInput(label="Captain: Max AGAINST votes (-1) [0-5]", required=True, max_length=2)
@@ -264,8 +262,6 @@ class SetupConfigMainView(ui.View):
         elif val == "deadlines":
             await interaction.response.send_modal(DeadlinesLogisticsModal(settings, interaction.message))
 
-# --- HAUPT-COG ---
-
 PERMISSION_CHOICES = [
     app_commands.Choice(name="Training (Create / Edit Dashboard)", value="training"),
     app_commands.Choice(name="Training Participation (Buttons)", value="training_participate"),
@@ -274,10 +270,10 @@ PERMISSION_CHOICES = [
     app_commands.Choice(name="Tournament (Manage Participants)", value="tournament_participants"),
     app_commands.Choice(name="Orgateam (Hotels & Carpools)", value="orgateam"),
     app_commands.Choice(name="Orga-Ping (Direct Message)", value="orga_ping"),
-    app_commands.Choice(name="Captain Election (Start)", value="captain_election"),
-    app_commands.Choice(name="Team Decisions (Admission / Votekick)", value="team_decisions"),
+    app_commands.Choice(name="Captain Election (/captain_election)", value="captain_election"),
+    app_commands.Choice(name="Team Decisions (/admission & /votekick)", value="team_decisions"),
     app_commands.Choice(name="General Poll (/vote)", value="vote"),
-    app_commands.Choice(name="Statistics (Basic)", value="statistics"),
+    app_commands.Choice(name="Statistics (/statistics)", value="statistics"),
     app_commands.Choice(name="Statistics (Detailed & Guests)", value="statistics_details"),
     app_commands.Choice(name="Profile (/profile)", value="profile"),
     app_commands.Choice(name="Server Bot Restriction (/punish & /pardon)", value="punish"),
@@ -327,17 +323,17 @@ class Setup(commands.Cog):
         await interaction.response.send_message(embed=embed, view=SetupConfigMainView(interaction.guild_id), ephemeral=True)
 
     @app_commands.command(name="setup", description="Assign or remove command permissions for server roles")
-    @app_commands.describe(befehl="Feature / Command to configure", aktion="Add or Remove", rollen_input="Mention roles (@Role) or paste Role IDs")
-    @app_commands.choices(befehl=PERMISSION_CHOICES, aktion=[
+    @app_commands.describe(feature="Feature / Command to configure", action="Add or Remove", roles="Mention roles (@Role) or paste Role IDs")
+    @app_commands.choices(feature=PERMISSION_CHOICES, action=[
         app_commands.Choice(name="Add (Allow)", value="add"),
         app_commands.Choice(name="Remove (Revoke)", value="remove")
     ])
     @app_commands.check(is_setup_authorized)
-    async def setup(self, interaction: discord.Interaction, befehl: app_commands.Choice[str], aktion: app_commands.Choice[str], rollen_input: str):
+    async def setup(self, interaction: discord.Interaction, feature: app_commands.Choice[str], action: app_commands.Choice[str], roles: str):
         if not interaction.guild_id:
             await interaction.response.send_message(i18n.t("en", "server_only"), ephemeral=True)
             return
-        role_ids = self.extract_role_ids(rollen_input)
+        role_ids = self.extract_role_ids(roles)
         if not role_ids:
             await interaction.response.send_message("❌ No valid roles detected.", ephemeral=True)
             return
@@ -347,24 +343,25 @@ class Setup(commands.Cog):
         for rid in role_ids:
             role_obj = interaction.guild.get_role(int(rid))
             rname = role_obj.name if role_obj else f"ID {rid}"
-            if aktion.value == "add":
-                ok = data_manager.add_command_permission(str(interaction.guild_id), befehl.value, rid)
+            if action.value == "add":
+                ok = data_manager.add_command_permission(str(interaction.guild_id), feature.value, rid)
             else:
-                ok = data_manager.remove_command_permission(str(interaction.guild_id), befehl.value, rid)
+                ok = data_manager.remove_command_permission(str(interaction.guild_id), feature.value, rid)
             processed.append(f"{'✅' if ok else '❌'} {rname}")
 
-        await interaction.followup.send(f"**Permissions `{befehl.name}`:**\n" + "\n".join(processed), ephemeral=True)
+        await interaction.followup.send(f"**Permissions `{feature.name}`:**\n" + "\n".join(processed), ephemeral=True)
 
     @app_commands.command(name="setup_list", description="Displays allowed roles for a specific command category")
-    @app_commands.choices(befehl=PERMISSION_CHOICES)
+    @app_commands.describe(feature="Feature / Command to inspect")
+    @app_commands.choices(feature=PERMISSION_CHOICES)
     @app_commands.check(is_setup_authorized)
-    async def setup_list(self, interaction: discord.Interaction, befehl: app_commands.Choice[str]):
+    async def setup_list(self, interaction: discord.Interaction, feature: app_commands.Choice[str]):
         if not interaction.guild_id:
             return
-        allowed_ids = data_manager.get_allowed_roles(str(interaction.guild_id), befehl.value)
-        embed = discord.Embed(title=f"Permissions: {befehl.name}", color=discord.Color.orange())
+        allowed_ids = data_manager.get_allowed_roles(str(interaction.guild_id), feature.value)
+        embed = discord.Embed(title=f"Permissions: {feature.name}", color=discord.Color.orange())
         if not allowed_ids:
-            if befehl.value == "training_participate":
+            if feature.value == "training_participate":
                 embed.description = "⚠️ No roles configured ➔ **Everyone** is allowed to participate."
             else:
                 embed.description = "⚠️ No roles configured ➔ Only Administrators have access."
@@ -375,8 +372,6 @@ class Setup(commands.Cog):
                 lines.append(f"• {role.mention}" if role else f"• Deleted Role (`{rid}`)")
             embed.description = "\n".join(lines)
         await interaction.response.send_message(embed=embed, ephemeral=True)
-
-    # --- DEVELOPER REMOTE COMMANDS ---
 
     @app_commands.command(name="dev_ban", description="[Developer] Global bot ban/unban by User ID")
     @app_commands.choices(action=[
@@ -400,13 +395,13 @@ class Setup(commands.Cog):
             data_manager.unblacklist_global_user(user_id)
             await interaction.response.send_message(f"✅ Global ban lifted for `{user_id}`.", ephemeral=True)
 
-    @app_commands.command(name="dev_dsgvo", description="[Developer] Cross-server GDPR export or erasure for any User ID")
+    @app_commands.command(name="dev_gdpr", description="[Developer] Cross-server GDPR export or erasure for any User ID")
     @app_commands.choices(action=[
         app_commands.Choice(name="Export Data (Art. 15)", value="export"),
         app_commands.Choice(name="Erase All Data (Art. 17)", value="erase")
     ])
     @app_commands.check(is_developer)
-    async def dev_dsgvo(self, interaction: discord.Interaction, user_id: str, action: app_commands.Choice[str]):
+    async def dev_gdpr(self, interaction: discord.Interaction, user_id: str, action: app_commands.Choice[str]):
         if not user_id.isdigit():
             await interaction.response.send_message("❌ Invalid numeric User ID.", ephemeral=True)
             return
@@ -425,7 +420,7 @@ class Setup(commands.Cog):
     @setup.error
     @setup_list.error
     @dev_ban.error
-    @dev_dsgvo.error
+    @dev_gdpr.error
     async def setup_error(self, interaction: discord.Interaction, error):
         if isinstance(error, app_commands.CheckFailure):
             await interaction.response.send_message(i18n.t(interaction, "no_permission"), ephemeral=True)
