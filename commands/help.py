@@ -35,8 +35,8 @@ class HelpSelect(discord.ui.Select):
 
         elif self.values[0] == "voting":
             embed.title = "🗳️ Secret Elections & Polls"
-            embed.add_field(name="`/captainwahl`", value="Starts a weighted, SHA-256 anonymized Captain Election using the server's custom FOR/AGAINST limits.\n*Permission:* `captain_election`", inline=False)
-            embed.add_field(name="`/aufnahme` & `/votekick`", value="Starts an anonymous admission or exclusion ballot using the server's configured majority % and quorum.\n*Permission:* `team_decisions`", inline=False)
+            embed.add_field(name="`/captain_election`", value="Starts a weighted, SHA-256 anonymized Captain Election using the server's custom FOR/AGAINST limits.\n*Permission:* `captain_election`", inline=False)
+            embed.add_field(name="`/admission` & `/votekick`", value="Starts an anonymous admission or exclusion ballot using the server's configured majority % and quorum.\n*Permission:* `team_decisions`", inline=False)
             embed.add_field(name="`/vote`", value="Creates a public or anonymous multi-option poll with live progress bars.\n*Permission:* `vote`", inline=False)
 
         elif self.values[0] == "profile":
@@ -47,7 +47,7 @@ class HelpSelect(discord.ui.Select):
 
         elif self.values[0] == "stats":
             embed.title = "📊 Statistics & Laserforce"
-            embed.add_field(name="`/statistik`", value="Attendance rankings for trainings & tournaments, optional Google Sheet history, and server Laserforce directory.\n*Permission:* `statistics` (`statistics_details` for detailed breakdown)", inline=False)
+            embed.add_field(name="`/statistics`", value="Attendance rankings for trainings & tournaments, optional Google Sheet history, and server Laserforce directory.\n*Permission:* `statistics` (`statistics_details` for detailed breakdown)", inline=False)
             embed.add_field(name="`/lf_set`", value="Links a server member to their iPlayLaserforce tag.\n*Permission:* `statistics`", inline=False)
 
         elif self.values[0] == "admin":
