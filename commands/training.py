@@ -451,7 +451,9 @@ class EditTrainingModal(discord.ui.Modal, title="Edit Training"):
         await interaction.followup.send("✅ Training updated!", ephemeral=True)
 
 class GuestAddModal(discord.ui.Modal, title="Add External Guest"):
-    guest_name = discord.TextInput(label="Guest Name", required=True, max_length=50) if hasattr(discord, "TextInput") else discord.ui.TextInput(label="Guest Name", required=True, max_length=50)
+    guest_name = discord.ui.TextInput(label="Guest Name", required=True, max_length=50) 
+    if hasattr(discord, "TextInput") 
+    else discord.ui.TextInput(label="Guest Name", required=True, max_length=50)
 
     def __init__(self, guild_id, custom_id, event_title, message):
         super().__init__()
