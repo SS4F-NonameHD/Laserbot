@@ -6,6 +6,8 @@ import traceback
 import data_manager
 import i18n
 
+DEV_ONLY_LOG_LEVELS = ('server', 'error', 'full', 'console', 'trace')
+
 class Logging(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -55,7 +57,7 @@ class Logging(commands.Cog):
         description = f"**Source:** {source}\n\n**Error:**\n```py\n{safe_error}\n```"
         await self.log_to_guild(guild, "error", "🚨 SYSTEM ERROR", description, discord.Color.brand_red(), None)
 
-    @app_commands.command(name="log", description="Sets the channel for bot & server audit logs")
+    @app_commands.command(name="log", description="Sets the channel for bot & command logs")
     async def log_setup(self, i: discord.Interaction, channel: discord.TextChannel):
         if not i.guild:
             await i.response.send_message(i18n.t("en", "server_only"), ephemeral=True)
@@ -74,9 +76,9 @@ class Logging(commands.Cog):
         app_commands.Choice(name="🤖 Bot (Commands + Interactions)", value="bot"),
         app_commands.Choice(name="Commands only", value="commands"),
         app_commands.Choice(name="Interactions only", value="interactions"),
-        app_commands.Choice(name="Server Audit", value="server"),
-        app_commands.Choice(name="🚨 Error (Caught Errors)", value="error"),
-        app_commands.Choice(name="Full (Cmds + Inter. + Server + Error)", value="full"),
+        app_commands.Choice(name="[Dev] Server Audit", value="server"),
+        app_commands.Choice(name="[Dev] 🚨 Error (Caught Errors)", value="error"),
+        app_commands.Choice(name="[Dev] Full (Cmds + Inter. + Server + Error)", value="full"),
         app_commands.Choice(name="[Dev] Console (Uncaught Tracebacks)", value="console"),
         app_commands.Choice(name="[Dev] Trace (Debug)", value="trace")
     ])
@@ -84,8 +86,8 @@ class Logging(commands.Cog):
         if not i.guild:
             await i.response.send_message(i18n.t("en", "server_only"), ephemeral=True)
             return
-        if level.value in ('trace', 'console') and i.user.id not in data_manager.DEVELOPER_IDS:
-            await i.response.send_message("⛔ `trace` and `console` levels are restricted to Bot Developers.", ephemeral=True)
+        if level.value in DEV_ONLY_LOG_LEVELS and i.user.id not in data_manager.DEVELOPER_IDS:
+            await i.response.send_message("⛔ The selected log level (`server`, `error`, `full`, `console`, `trace`) is restricted to Bot Developers.", ephemeral=True)
             return
         if not (i.user.guild_permissions.administrator or i.user.id in data_manager.DEVELOPER_IDS):
             await i.response.send_message(i18n.t(i, "no_permission"), ephemeral=True)
